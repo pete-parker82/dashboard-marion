@@ -88,9 +88,21 @@
   .empty{color:#C7C3B8;}
   .preco-val{color:var(--accent);font-weight:600;}
 
+  .chart-scroll{overflow-x:auto;}
+  .chart-inner{min-width:640px;}
+  .table-scroll{overflow-x:auto;}
+  table{min-width:720px;}
+
   canvas{max-width:100%;}
   @media (max-width:900px){.row.kpis{grid-template-columns:repeat(3,1fr);} .row.two{grid-template-columns:1fr;}}
-  @media (max-width:560px){.row.kpis{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:560px){
+    .row.kpis{grid-template-columns:repeat(2,1fr);}
+    main{padding:14px 12px 30px;}
+    header{padding:14px 16px;}
+    .kpi .v{font-size:17px;}
+    .card{padding:12px;}
+    .dynzone{padding:12px;}
+  }
 </style>
 </head>
 <body>
@@ -119,23 +131,23 @@
 
     <div class="card" style="margin-bottom:12px;">
       <div class="h"><h2>Recettes / charges</h2><span class="tag" id="trendTag"></span></div>
-      <canvas id="trendChart" height="110"></canvas>
+      <div class="chart-scroll"><div class="chart-inner"><canvas id="trendChart" height="110"></canvas></div></div>
     </div>
 
     <div class="row two">
       <div class="card">
         <div class="h"><h2>Résultat mensuel</h2><span class="tag" id="resultTag"></span></div>
-        <canvas id="resultChart" height="170"></canvas>
+        <div class="chart-scroll"><div class="chart-inner"><canvas id="resultChart" height="170"></canvas></div></div>
       </div>
       <div class="card">
         <div class="h"><h2>Ratio charges / recettes</h2><span class="tag" id="ratioTag"></span></div>
-        <canvas id="ratioChart" height="170"></canvas>
+        <div class="chart-scroll"><div class="chart-inner"><canvas id="ratioChart" height="170"></canvas></div></div>
       </div>
     </div>
 
     <div class="card">
       <div class="h"><h2>Charges par nature</h2><span class="tag" id="bdTag"></span></div>
-      <canvas id="breakdownChart" height="190"></canvas>
+      <div class="chart-scroll"><div class="chart-inner" style="min-width:340px;"><canvas id="breakdownChart" height="190"></canvas></div></div>
       <div class="legend" id="breakdownLegend"></div>
     </div>
   </div>
@@ -165,11 +177,13 @@
         <span class="chip mini active" data-y="2026">2026</span>
       </div>
     </div>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Mois</th><th>Recettes</th><th>Charges</th><th>Résultat</th><th>CARMF</th><th>URSSAF</th><th>Rétro.</th><th>Versé compte commun</th><th>Préco à verser</th></tr></thead>
       <tbody id="tbody"></tbody>
       <tfoot><tr id="tfoot"></tr></tfoot>
     </table>
+    </div>
   </div>
 
 </main>
