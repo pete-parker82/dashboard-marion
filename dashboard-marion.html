@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard-Marion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root{
+    --ink:#161D27; --paper:#F6F5F1; --card:#FFFFFF; --border:#E4E1D8; --border2:#D8D4C8;
+    --muted:#7A8290; --teal:#1F6B5C; --rust:#9C4A2E; --gold:#A47B00; --accent:#2A3F5F;
+    --dyn-bg:#EFEEE7;
+    --mono:'IBM Plex Mono',monospace; --disp:'Fraunces',serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:13.5px;}
+  .mono{font-family:var(--mono);}
+
+  header{background:var(--ink);color:#fff;padding:16px 26px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  header h1{font-family:var(--disp);font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em;}
+  header .eyebrow{font-family:var(--mono);font-size:10px;color:#8b93a0;letter-spacing:.05em;text-transform:uppercase;}
+
+  main{max-width:1280px;margin:0 auto;padding:20px 26px 46px;}
+
+  .dynzone{background:var(--dyn-bg);border:1.5px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:16px;}
+  .dynzone-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:0 4px 14px;}
+  .dynzone-head .title{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;}
+  .dynzone-head .title b{color:var(--ink);}
+  .filterbar{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:999px;border:1px solid var(--border2);background:#fff;color:var(--muted);cursor:pointer;font-weight:500;letter-spacing:.02em;}
+  .chip:hover{border-color:var(--accent);color:var(--ink);}
+  .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .chip.mini{font-size:10px;padding:3px 9px;}
+
+  .row{display:grid;gap:12px;margin-bottom:12px;}
+  .row:last-child{margin-bottom:0;}
+  .row.kpis{grid-template-columns:repeat(6,1fr);}
+  .row.two{grid-template-columns:1.3fr 1fr;}
+
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 15px;position:relative;}
+  .kpi .l{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;}
+  .kpi .v{font-family:var(--mono);font-size:20px;font-weight:600;}
+  .kpi .s{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px;}
+  .kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:2px;}
+  .kpi.c1::before{background:var(--teal);} .kpi.c2::before{background:var(--rust);}
+  .kpi.c3::before{background:var(--ink);} .kpi.c4::before{background:var(--gold);}
+  .kpi.c5::before{background:var(--accent);}
+  .kpi.c6::before{background:var(--teal);}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap;}
+  .card .h h2{font-family:var(--disp);font-size:14.5px;font-weight:700;margin:0;}
+  .card .tag{font-family:var(--mono);font-size:9.5px;color:var(--muted);}
+
+  .legend{display:flex;gap:10px;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  .timeline{display:flex;gap:6px;align-items:flex-end;height:150px;min-width:560px;padding-top:26px;}
+  .tl-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;}
+  .tl-total{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--ink);position:absolute;top:-22px;white-space:nowrap;}
+  .tl-bar{width:100%;max-width:28px;display:flex;flex-direction:column-reverse;border-radius:3px 3px 1px 1px;overflow:hidden;height:88px;background:#F0EFEA;cursor:default;}
+  .tl-seg.carmf{background:var(--gold);} .tl-seg.urssaf{background:var(--rust);}
+  .tl-seg.forecast{background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.5) 0 3px, transparent 3px 6px);opacity:.7;}
+  .tl-month{font-family:var(--mono);font-size:9.5px;color:var(--muted);}
+  .tl-status{font-family:var(--mono);font-size:8px;color:#b7bec7;text-transform:uppercase;}
+
+  .card-standalone{margin-bottom:16px;}
+
+  .statzone{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+  .statzone .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .statzone .h h2{font-family:var(--disp);font-size:15px;font-weight:700;margin:0;}
+  .statzone .h .th-note{font-family:var(--mono);font-size:9.5px;color:var(--muted);}
+  .yeartabs{display:flex;gap:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  th{text-align:right;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:6px 7px;border-bottom:1.5px solid var(--ink);}
+  th:first-child{text-align:left;}
+  td{text-align:right;padding:6px 7px;border-bottom:1px solid var(--border);font-family:var(--mono);}
+  td:first-child{text-align:left;font-family:'Inter';font-weight:500;}
+  tr.f td{color:var(--muted);}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px;}
+  .dot.r{background:var(--teal);} .dot.f{background:var(--muted);}
+  tfoot td{border-top:1.5px solid var(--ink);border-bottom:none;font-weight:700;padding-top:8px;}
+  .empty{color:#C7C3B8;}
+  .preco-val{color:var(--accent);font-weight:600;}
+
+  canvas{max-width:100%;}
+  @media (max-width:900px){.row.kpis{grid-template-columns:repeat(3,1fr);} .row.two{grid-template-columns:1fr;}}
+  @media (max-width:560px){.row.kpis{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+
+<header>
+  <div><span class="eyebrow">Dashboard-Marion</span><h1>Pilotage — Dr. Marion Lajus</h1></div>
+  <div class="eyebrow">MAJ 22/07/2026</div>
+</header>
+
+<main>
+
+  <div class="dynzone">
+    <div class="dynzone-head">
+      <span class="title">Vue par période — <b id="periodLabel">2025</b></span>
+      <div class="filterbar" id="filterbar">
+        <span class="chip" data-p="1m">Ce mois</span>
+        <span class="chip" data-p="3m">3 derniers mois</span>
+        <span class="chip" data-p="6m">6 derniers mois</span>
+        <span class="chip" data-p="2025">2025</span>
+        <span class="chip active" data-p="2026">2026</span>
+        <span class="chip" data-p="all">Tout</span>
+      </div>
+    </div>
+
+    <div class="row kpis" id="kpis"></div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="h"><h2>Recettes / charges</h2><span class="tag" id="trendTag"></span></div>
+      <canvas id="trendChart" height="110"></canvas>
+    </div>
+
+    <div class="row two">
+      <div class="card">
+        <div class="h"><h2>Résultat mensuel</h2><span class="tag" id="resultTag"></span></div>
+        <canvas id="resultChart" height="170"></canvas>
+      </div>
+      <div class="card">
+        <div class="h"><h2>Ratio charges / recettes</h2><span class="tag" id="ratioTag"></span></div>
+        <canvas id="ratioChart" height="170"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="h"><h2>Charges par nature</h2><span class="tag" id="bdTag"></span></div>
+      <canvas id="breakdownChart" height="190"></canvas>
+      <div class="legend" id="breakdownLegend"></div>
+    </div>
+  </div>
+
+  <div class="statzone card-standalone">
+    <div class="h">
+      <h2>Cotisations sociales</h2>
+      <div class="yeartabs" id="cotisYearTabs">
+        <span class="chip mini" data-y="2025">2025</span>
+        <span class="chip mini active" data-y="2026">2026</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;"><div class="timeline" id="timeline"></div></div>
+    <div class="legend">
+      <span><i style="background:var(--gold)"></i>CARMF</span>
+      <span><i style="background:var(--rust)"></i>URSSAF</span>
+      <span><i class="tl-seg forecast" style="width:8px;height:8px;display:inline-block;border-radius:2px;background:var(--rust)"></i>projeté</span>
+    </div>
+  </div>
+
+  <div class="statzone">
+    <div class="h">
+      <h2>Détail mensuel</h2>
+      <span class="th-note">Préco = 85% du cash net généré (recettes − charges), arrondi à 50 €, marge de sécurité 15%</span>
+      <div class="yeartabs" id="yeartabs">
+        <span class="chip mini" data-y="2025">2025</span>
+        <span class="chip mini active" data-y="2026">2026</span>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Mois</th><th>Recettes</th><th>Charges</th><th>Résultat</th><th>CARMF</th><th>URSSAF</th><th>Rétro.</th><th>Versé compte commun</th><th>Préco à verser</th></tr></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot><tr id="tfoot"></tr></tfoot>
+    </table>
+  </div>
+
+</main>
+
+<script>
+Chart.register(ChartDataLabels);
+const fmt = n => new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+const fmtPct = n => isFinite(n) ? new Intl.NumberFormat('fr-FR',{style:'percent',maximumFractionDigits:1}).format(n) : '—';
+const fmtK = n => (n/1000).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+'k€';
+
+/*DATA_START*/
+const M = [
+  {mois:'2025-01',label:'Janv. 25',recettes:919.00,  charges:2360.00, carmf:1000,urssaf:0,   retro:0,      loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-02',label:'Fév. 25', recettes:9304.86, charges:612.75,  carmf:0,   urssaf:0,   retro:0,      loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-03',label:'Mars 25', recettes:3452.35, charges:4381.43, carmf:0,   urssaf:0,   retro:0,      loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-04',label:'Avr. 25', recettes:6131.22, charges:6617.17, carmf:1520,urssaf:0,   retro:1228.90,loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-05',label:'Mai 25',  recettes:5704.74, charges:5594.69, carmf:1520,urssaf:77,  retro:691.30, loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-06',label:'Juin 25', recettes:7601.10, charges:9035.26, carmf:1520,urssaf:96,  retro:970.00, loyer:0,fraisFixes:0,achats:0, verse:null, reel:true},
+  {mois:'2025-07',label:'Juil. 25',recettes:11664.76,charges:10496.66,carmf:1520,urssaf:77,  retro:1265.00,loyer:0,fraisFixes:0,achats:0, verse:3000, reel:true},
+  {mois:'2025-08',label:'Août 25', recettes:2918.80, charges:4389.43, carmf:1520,urssaf:1207,retro:474.00, loyer:0,fraisFixes:0,achats:0, verse:0,    reel:true},
+  {mois:'2025-09',label:'Sept. 25',recettes:9666.50, charges:8943.35, carmf:1320,urssaf:1218,retro:701.25, loyer:0,fraisFixes:0,achats:0, verse:0,    reel:true},
+  {mois:'2025-10',label:'Oct. 25', recettes:8209.26, charges:7176.85, carmf:1320,urssaf:0,   retro:0,      loyer:0,fraisFixes:0,achats:0, verse:4000, reel:true},
+  {mois:'2025-11',label:'Nov. 25', recettes:7980.38, charges:3503.70, carmf:0,   urssaf:0,   retro:839.00, loyer:0,fraisFixes:0,achats:0, verse:3100, reel:true},
+  {mois:'2025-12',label:'Déc. 25', recettes:11050.66,charges:4250.17, carmf:2319,urssaf:0,   retro:644.00, loyer:0,fraisFixes:0,achats:0, verse:4000, reel:true},
+
+  {mois:'2026-01',label:'Janv. 26',recettes:8943.45, charges:3821.32, carmf:1330,urssaf:46,  retro:854.00, loyer:600, fraisFixes:493.11, achats:498.21,verse:4000, reel:true},
+  {mois:'2026-02',label:'Fév. 26', recettes:6159.90, charges:5899.41, carmf:1330,urssaf:2674,retro:559.00, loyer:600, fraisFixes:381.43, achats:354.98,verse:3000, reel:true},
+  {mois:'2026-03',label:'Mars 26', recettes:10858.76,charges:3879.75, carmf:1250,urssaf:56,  retro:957.00, loyer:600, fraisFixes:484.21, achats:532.54,verse:4000, reel:true},
+  {mois:'2026-04',label:'Avr. 26', recettes:7782.28, charges:4739.97, carmf:1250,urssaf:46,  retro:536.00, loyer:600, fraisFixes:1785.53,achats:522.44,verse:4000, reel:true},
+  {mois:'2026-05',label:'Mai 26',  recettes:8900.96, charges:1968.74, carmf:1250,urssaf:66,  retro:0,      loyer:0,   fraisFixes:315.94, achats:336.80,verse:4000, reel:true},
+  {mois:'2026-06',label:'Juin 26', recettes:13800.29,charges:5704.94, carmf:1250,urssaf:46,  retro:1739.00,loyer:1200,fraisFixes:713.88, achats:756.06,verse:4000, reel:true},
+  {mois:'2026-07',label:'Juil. 26',recettes:11020.54,charges:3824.76, carmf:1250,urssaf:1645,retro:0,      loyer:0,   fraisFixes:704.50, achats:225.26,verse:0,    reel:true},
+  // projeté : URSSAF = échéancier officiel du 06/06/2026 ; reste = hypothèse (recette moyenne récente + charges habituelles)
+  {mois:'2026-08',label:'Août 26', recettes:9500,    charges:3956,    carmf:1250,urssaf:1356,retro:750,    loyer:600, fraisFixes:700,    achats:450,    verse:null, reel:false},
+  {mois:'2026-09',label:'Sept. 26',recettes:9500,    charges:3956,    carmf:1250,urssaf:1356,retro:750,    loyer:600, fraisFixes:700,    achats:450,    verse:null, reel:false},
+  {mois:'2026-10',label:'Oct. 26', recettes:9500,    charges:3956,    carmf:1250,urssaf:1356,retro:750,    loyer:600, fraisFixes:700,    achats:450,    verse:null, reel:false},
+  {mois:'2026-11',label:'Nov. 26', recettes:9500,    charges:4076,    carmf:1250,urssaf:1476,retro:750,    loyer:600, fraisFixes:700,    achats:450,    verse:null, reel:false},
+  {mois:'2026-12',label:'Déc. 26', recettes:9500,    charges:4051,    carmf:1350,urssaf:1351,retro:750,    loyer:600, fraisFixes:1000,   achats:450,    verse:null, reel:false},
+];
+/*DATA_END*/
+
+const TODAY_MOIS = '2026-07';
+const TODAY_IDX = M.findIndex(d=>d.mois===TODAY_MOIS);
+
+// préco 100% dynamique : recalcule dès que recettes/charges de la ligne changent (prochain refresh de données)
+function calcPreco(row){
+  const cashNet = row.recettes - row.charges;
+  const preco = Math.max(0, Math.round((cashNet*0.85)/50)*50);
+  return preco;
+}
+
+let charts={};
+
+function rowsFor(period){
+  if(period==='1m') return M.slice(TODAY_IDX, TODAY_IDX+1);
+  if(period==='3m') return M.slice(TODAY_IDX-2, TODAY_IDX+1);
+  if(period==='6m') return M.slice(TODAY_IDX-5, TODAY_IDX+1);
+  if(period==='2025') return M.filter(d=>d.mois.startsWith('2025'));
+  if(period==='2026') return M.filter(d=>d.mois.startsWith('2026'));
+  return M;
+}
+const sum=(rows,k)=>rows.reduce((a,r)=>a+(r[k]||0),0);
+const periodLabels = {'1m':'Ce mois (juillet 2026)','3m':'3 derniers mois','6m':'6 derniers mois','2025':'2025','2026':'2026','all':'Tout (2025–2026)'};
+
+function renderKPIs(period){
+  const rows = rowsFor(period);
+  const recettes=sum(rows,'recettes'), charges=sum(rows,'charges'), marge=recettes-charges;
+  const carmf=sum(rows,'carmf'), urssaf=sum(rows,'urssaf');
+  const verseRows = rows.filter(r=>r.verse!==null && r.verse!==undefined);
+  const verseTotal = verseRows.reduce((a,r)=>a+r.verse,0);
+  const verseMoy = verseRows.length ? verseTotal/verseRows.length : 0;
+  const recettesVerseRows = sum(verseRows,'recettes');
+  const versePct = recettesVerseRows>0 ? verseTotal/recettesVerseRows : NaN;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi c1"><div class="l">Recettes</div><div class="v">${fmt(recettes)}</div></div>
+    <div class="kpi c2"><div class="l">Charges</div><div class="v">${fmt(charges)}</div><div class="s">${fmtPct(charges/recettes)}</div></div>
+    <div class="kpi c3"><div class="l">Résultat</div><div class="v">${fmt(marge)}</div><div class="s">${fmtPct(marge/recettes)}</div></div>
+    <div class="kpi c4"><div class="l">CARMF + URSSAF</div><div class="v">${fmt(carmf+urssaf)}</div></div>
+    <div class="kpi c5"><div class="l">Salaire versé — total</div><div class="v">${fmt(verseTotal)}</div><div class="s">moy. mensuelle ${fmt(verseMoy)}</div></div>
+    <div class="kpi c6"><div class="l">Versé / revenu touché</div><div class="v">${fmtPct(versePct)}</div><div class="s">sur mois avec versement connu</div></div>
+  `;
+}
+
+function renderTrend(period){
+  const rows = rowsFor(period);
+  document.getElementById('trendTag').textContent = rows.length+' mois';
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if(charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.label),
+    datasets:[
+      {label:'Recettes',data:rows.map(r=>r.recettes),backgroundColor:rows.map(r=>r.reel===false?'rgba(31,107,92,.35)':'#1F6B5C'),borderRadius:3,
+        datalabels:{anchor:'end',align:'top',color:'#1F6B5C',font:{family:'IBM Plex Mono',size:9,weight:'600'},formatter:v=>fmtK(v)}},
+      {label:'Charges',data:rows.map(r=>r.charges),backgroundColor:rows.map(r=>r.reel===false?'rgba(156,74,46,.35)':'#9C4A2E'),borderRadius:3,
+        datalabels:{anchor:'end',align:'top',color:'#9C4A2E',font:{family:'IBM Plex Mono',size:9,weight:'600'},formatter:v=>fmtK(v)}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:20,bottom:6}},
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:11}}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtK(v),font:{family:'IBM Plex Mono',size:10}},grid:{color:'#ECEAE3'}},x:{grid:{display:false},ticks:{font:{size:10},maxRotation:90,minRotation:90}}}}});
+}
+
+// deux graphes séparés : plus lisible qu'un combo bar+ligne sur la même échelle
+function renderResult(period){
+  const rows = rowsFor(period);
+  document.getElementById('resultTag').textContent = rows.length+' mois';
+  const resultats = rows.map(r=>r.recettes-r.charges);
+  const ctx = document.getElementById('resultChart').getContext('2d');
+  if(charts.result) charts.result.destroy();
+  charts.result = new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.label),
+    datasets:[{label:'Résultat',data:resultats,borderRadius:3,
+      backgroundColor:resultats.map((v,i)=> rows[i].reel===false ? (v>=0?'rgba(31,107,92,.35)':'rgba(156,74,46,.35)') : (v>=0?'#1F6B5C':'#9C4A2E')),
+      datalabels:{anchor:'end',align:(c)=>resultats[c.dataIndex]>=0?'top':'bottom',color:(c)=>resultats[c.dataIndex]>=0?'#1F6B5C':'#9C4A2E',font:{family:'IBM Plex Mono',size:9,weight:'600'},formatter:v=>fmtK(v)}}]},
+    options:{responsive:true,layout:{padding:{top:20,bottom:6}},plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>fmtK(v),font:{family:'IBM Plex Mono',size:10}},grid:{color:'#ECEAE3'}},x:{grid:{display:false},ticks:{font:{size:10},maxRotation:90,minRotation:90}}}}});
+}
+
+function renderRatio(period){
+  const rows = rowsFor(period);
+  document.getElementById('ratioTag').textContent = rows.length+' mois';
+  const ratios = rows.map(r=> r.recettes>0 ? (r.charges/r.recettes*100) : 0);
+  const ctx = document.getElementById('ratioChart').getContext('2d');
+  if(charts.ratio) charts.ratio.destroy();
+  charts.ratio = new Chart(ctx,{type:'line',data:{labels:rows.map(r=>r.label),
+    datasets:[{label:'Charges / Recettes',data:ratios,borderColor:'#2A3F5F',backgroundColor:'rgba(42,63,95,.12)',
+      fill:true,borderWidth:2,pointRadius:4,pointBackgroundColor:rows.map(r=>r.reel===false?'#B7BEC7':'#2A3F5F'),tension:.25,
+      segment:{borderDash:ctx=>rows[ctx.p1DataIndex] && rows[ctx.p1DataIndex].reel===false?[5,4]:undefined},
+      datalabels:{align:'top',color:'#2A3F5F',font:{family:'IBM Plex Mono',size:9,weight:'600'},formatter:v=>v.toFixed(0)+'%'}}]},
+    options:{responsive:true,layout:{padding:{top:20,bottom:6}},plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>v+'%',font:{family:'IBM Plex Mono',size:10}},grid:{color:'#ECEAE3'}},x:{grid:{display:false},ticks:{font:{size:10},maxRotation:90,minRotation:90}}}}});
+}
+
+function renderBreakdown(period){
+  const rows = rowsFor(period);
+  const vals2025 = sum(rows.filter(r=>r.mois.startsWith('2025')),'charges')
+                 - sum(rows.filter(r=>r.mois.startsWith('2025')),'carmf')
+                 - sum(rows.filter(r=>r.mois.startsWith('2025')),'urssaf')
+                 - sum(rows.filter(r=>r.mois.startsWith('2025')),'retro');
+  const labels=['CARMF','URSSAF','Rétrocession Bayane','Loyer cabinet','Frais fixes (WEDA, MACSF, SFR, EDF...)','Achats & fournitures','Autres (2025, non détaillé par mois)'];
+  const vals=[sum(rows,'carmf'),sum(rows,'urssaf'),sum(rows,'retro'),sum(rows,'loyer'),sum(rows,'fraisFixes'),sum(rows,'achats'),Math.max(vals2025,0)];
+  const colors=['#A47B00','#9C4A2E','#5C2E1A','#2A3F5F','#7A8290','#C9A96A','#B7BEC7'];
+  document.getElementById('bdTag').textContent = periodLabels[period];
+  const ctx=document.getElementById('breakdownChart').getContext('2d');
+  if(charts.bd) charts.bd.destroy();
+  charts.bd=new Chart(ctx,{type:'bar',indexAxis:'y',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3,
+      datalabels:{anchor:'end',align:'end',color:'#333',font:{family:'IBM Plex Mono',size:10,weight:'600'},formatter:v=>fmt(v)}}]},
+    options:{responsive:true,layout:{padding:{right:60}},plugins:{legend:{display:false}},
+      scales:{x:{ticks:{callback:v=>fmtK(v),font:{family:'IBM Plex Mono',size:10}},grid:{color:'#ECEAE3'}},y:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}}}}});
+  document.getElementById('breakdownLegend').innerHTML = labels.map((l,i)=>`<span><i style="background:${colors[i]}"></i>${l}</span>`).join('');
+}
+
+function renderDynZone(period){
+  document.getElementById('periodLabel').textContent = periodLabels[period];
+  renderKPIs(period);
+  renderTrend(period);
+  renderResult(period);
+  renderRatio(period);
+  renderBreakdown(period);
+}
+
+document.querySelectorAll('#filterbar .chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('#filterbar .chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    renderDynZone(c.dataset.p);
+  });
+});
+
+// ---- Cotisations sociales : totalement indépendant, ses propres onglets années ----
+function renderTimeline(year){
+  const rows = M.filter(d=>d.mois.startsWith(year));
+  const max = Math.max(...rows.map(d=>d.carmf+d.urssaf));
+  document.getElementById('timeline').innerHTML = rows.map(d=>{
+    const cls = d.reel ? '' : 'forecast';
+    const total = d.carmf + d.urssaf;
+    return `<div class="tl-col">
+      <span class="tl-total">${fmt(total)}</span>
+      <div class="tl-bar">
+        <div class="tl-seg urssaf ${cls}" style="height:${(d.urssaf/max*100).toFixed(1)}%" title="URSSAF ${d.label} : ${fmt(d.urssaf)}"></div>
+        <div class="tl-seg carmf ${cls}" style="height:${(d.carmf/max*100).toFixed(1)}%" title="CARMF ${d.label} : ${fmt(d.carmf)}"></div>
+      </div>
+      <span class="tl-month">${d.label.split(' ')[0]}</span>
+      <span class="tl-status">${d.reel?'réel':'projeté'}</span>
+    </div>`;
+  }).join('');
+}
+document.querySelectorAll('#cotisYearTabs .chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('#cotisYearTabs .chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    renderTimeline(c.dataset.y);
+  });
+});
+
+// ---- Tableau : indépendant, ses propres onglets années, colonnes Versé/Préco dynamiques ----
+function renderTable(year){
+  const rows = M.filter(d=>d.mois.startsWith(year));
+  document.getElementById('tbody').innerHTML = rows.map(r=>{
+    const res=r.recettes-r.charges;
+    let verseCell, precoCell;
+    if(r.reel && r.verse!==null){ verseCell = fmt(r.verse); precoCell = '<span class="empty">—</span>'; }
+    else if(r.reel && r.verse===null){ verseCell = '<span class="empty">n/d</span>'; precoCell = '<span class="empty">—</span>'; }
+    else { verseCell = '<span class="empty">—</span>'; precoCell = `<span class="preco-val">${fmt(calcPreco(r))}</span>`; }
+    return `<tr class="${r.reel===false?'f':''}">
+      <td><span class="dot ${r.reel===false?'f':'r'}"></span>${r.label}</td>
+      <td>${fmt(r.recettes)}</td><td>${fmt(r.charges)}</td>
+      <td style="color:${res>=0?'#1F6B5C':'#9C4A2E'};font-weight:600;">${fmt(res)}</td>
+      <td>${fmt(r.carmf||0)}</td><td>${fmt(r.urssaf||0)}</td><td>${fmt(r.retro||0)}</td>
+      <td>${verseCell}</td><td>${precoCell}</td>
+    </tr>`;
+  }).join('');
+  const tR=sum(rows,'recettes'), tC=sum(rows,'charges');
+  const tVerse = rows.reduce((a,r)=>a+(r.verse||0),0);
+  const tPreco = rows.reduce((a,r)=> a+(!r.reel ? calcPreco(r) : 0),0);
+  document.getElementById('tfoot').innerHTML = `
+    <td>Total ${year}</td><td>${fmt(tR)}</td><td>${fmt(tC)}</td>
+    <td style="color:${tR-tC>=0?'#1F6B5C':'#9C4A2E'}">${fmt(tR-tC)}</td>
+    <td>${fmt(sum(rows,'carmf'))}</td><td>${fmt(sum(rows,'urssaf'))}</td><td>${fmt(sum(rows,'retro'))}</td>
+    <td>${fmt(tVerse)}</td><td>${fmt(tPreco)}</td>`;
+}
+document.querySelectorAll('#yeartabs .chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('#yeartabs .chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    renderTable(c.dataset.y);
+  });
+});
+
+renderDynZone('2026');
+renderTimeline('2026');
+renderTable('2026');
+</script>
+</body>
+</html>
