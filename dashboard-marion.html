@@ -96,7 +96,7 @@
 <body>
 
 <header>
-  <div><span class="eyebrow">Dashboard-Marion</span><h1>Pilotage — Dr. Marion Lajus</h1></div>
+  <div><span class="eyebrow">Dashboard-Marion</span><h1>Pilotage — Dr. Marion</h1></div>
   <div class="eyebrow">MAJ 22/07/2026</div>
 </header>
 
@@ -306,7 +306,7 @@ function renderBreakdown(period){
                  - sum(rows.filter(r=>r.mois.startsWith('2025')),'carmf')
                  - sum(rows.filter(r=>r.mois.startsWith('2025')),'urssaf')
                  - sum(rows.filter(r=>r.mois.startsWith('2025')),'retro');
-  const labels=['CARMF','URSSAF','Rétrocession Bayane','Loyer cabinet','Frais fixes (WEDA, MACSF, SFR, EDF...)','Achats & fournitures','Autres (2025, non détaillé par mois)'];
+  const labels=['CARMF','URSSAF','Rétrocession','Loyer cabinet','Frais fixes (logiciels, assurance, téléphone...)','Achats & fournitures','Autres (2025, non détaillé par mois)'];
   const vals=[sum(rows,'carmf'),sum(rows,'urssaf'),sum(rows,'retro'),sum(rows,'loyer'),sum(rows,'fraisFixes'),sum(rows,'achats'),Math.max(vals2025,0)];
   const colors=['#A47B00','#9C4A2E','#5C2E1A','#2A3F5F','#7A8290','#C9A96A','#B7BEC7'];
   document.getElementById('bdTag').textContent = periodLabels[period];

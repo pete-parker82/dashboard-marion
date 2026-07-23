@@ -8,7 +8,7 @@ Ordre d'exécution (comme demandé) :
      (export Pennylane, relevé de compte pro), même si le nom de fichier ne le dit pas clairement
   3. Dédoublonne les transactions bancaires (Marion copie parfois toute la page Pennylane, donc
      des lignes identiques peuvent apparaître dans plusieurs exports)
-  4. Recalcule les agrégats mensuels (recettes, charges, CARMF, URSSAF, rétrocession Bayane...)
+  4. Recalcule les agrégats mensuels (recettes, charges, CARMF, URSSAF, rétrocession...)
   5. Réinjecte ces données dans dashboard-marion.html, entre les marqueurs /*DATA_START*/ /*DATA_END*/
 
 Statut : la mécanique (auth, lecture Sheet, scan+dédoublonnage Drive, écriture du HTML) est
@@ -187,7 +187,7 @@ def categorize(libelle: str) -> str:
 
 def build_monthly_dataset(sheet_data: dict, bank_df: pd.DataFrame) -> list[dict]:
     """
-    Combine le Sheet (recettes déclaratives Carcans/Sainte-Hélène) et le relevé bancaire
+    Combine le Sheet (recettes déclaratives par site d'activité) et le relevé bancaire
     catégorisé pour produire la liste de dicts mensuels utilisée par le dashboard.
 
     À FINALISER ENSEMBLE : la structure ci-dessous applique la même logique que l'analyse
