@@ -88,10 +88,11 @@
   .empty{color:#C7C3B8;}
   .preco-val{color:var(--accent);font-weight:600;}
 
-  .chart-scroll{overflow-x:auto;}
-  .chart-inner{min-width:640px;}
   .table-scroll{overflow-x:auto;}
   table{min-width:720px;}
+
+  /* évite qu'un enfant trop large ne force toute une colonne de grille à s'élargir */
+  .row.kpis > *, .row.two > *{min-width:0;}
 
   canvas{max-width:100%;}
   @media (max-width:900px){.row.kpis{grid-template-columns:repeat(3,1fr);} .row.two{grid-template-columns:1fr;}}
@@ -131,23 +132,23 @@
 
     <div class="card" style="margin-bottom:12px;">
       <div class="h"><h2>Recettes / charges</h2><span class="tag" id="trendTag"></span></div>
-      <div class="chart-scroll"><div class="chart-inner"><canvas id="trendChart" height="110"></canvas></div></div>
+      <canvas id="trendChart" height="110"></canvas>
     </div>
 
     <div class="row two">
       <div class="card">
         <div class="h"><h2>Résultat mensuel</h2><span class="tag" id="resultTag"></span></div>
-        <div class="chart-scroll"><div class="chart-inner"><canvas id="resultChart" height="170"></canvas></div></div>
+        <canvas id="resultChart" height="170"></canvas>
       </div>
       <div class="card">
         <div class="h"><h2>Ratio charges / recettes</h2><span class="tag" id="ratioTag"></span></div>
-        <div class="chart-scroll"><div class="chart-inner"><canvas id="ratioChart" height="170"></canvas></div></div>
+        <canvas id="ratioChart" height="170"></canvas>
       </div>
     </div>
 
     <div class="card">
       <div class="h"><h2>Charges par nature</h2><span class="tag" id="bdTag"></span></div>
-      <div class="chart-scroll"><div class="chart-inner" style="min-width:340px;"><canvas id="breakdownChart" height="190"></canvas></div></div>
+      <canvas id="breakdownChart" height="190"></canvas>
       <div class="legend" id="breakdownLegend"></div>
     </div>
   </div>
