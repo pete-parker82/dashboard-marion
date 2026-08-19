@@ -12,10 +12,15 @@ Ordre d'exécution (comme demandé) :
   5. Réinjecte ces données dans dashboard-marion.html, entre les marqueurs /*DATA_START*/ /*DATA_END*/
 
 Statut : la mécanique (auth, lecture Sheet, scan+dédoublonnage Drive, écriture du HTML) est
-complète et fonctionnelle. La fonction build_monthly_dataset() applique la même logique de
-catégorisation déjà validée manuellement (voir catégories ci-dessous) mais doit être vérifiée
-une première fois en conditions réelles avec vos identifiants avant de tourner seule — la
-structure exacte des colonnes du Sheet et des exports Pennylane peut varier légèrement.
+complète et fonctionnelle. build_monthly_dataset() utilise directement les colonnes Type/
+Dénomination du Sheet (vérifiées sur les onglets ML-2025 et ML-2026 réels), donc les recettes
+et charges de chaque mois sont calculées à partir de ce que Marion saisit, pas d'une estimation.
+Seul le "versé compte commun" reste détecté depuis le relevé bancaire (le Sheet ne le suit pas).
+
+Limite connue : si un mois n'a pas encore ses lignes "Recettes Carcans" / "Recettes Ste Hélène"
+saisies par Marion, les recettes calculées pour ce mois resteront à 0 — le script ne remplace
+jamais un chiffre manquant par une estimation inventée. Le mois reste marqué reel=False dans ce
+cas, pour qu'on garde l'ancienne valeur estimée côté dashboard plutôt que d'écraser avec du 0.
 """
 
 import io
@@ -36,6 +41,7 @@ HERE = Path(__file__).parent
 CONFIG_PATH = HERE / "config.json"
 TEMPLATE_PATH = HERE / "dashboard-marion.html"   # sert aussi de template (contient les marqueurs)
 OUTPUT_PATH = HERE / "dashboard-marion.html"
+STATE_PATH = HERE / "monthly_data.json"          # état persistant, gardé entre deux refresh
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
@@ -183,40 +189,159 @@ def categorize(libelle: str) -> str:
     return "autre"
 
 
+FR_MONTHS = {
+    "janv": 1, "févr": 2, "fevr": 2, "mars": 3, "avr": 4, "mai": 5, "juin": 6,
+    "juil": 7, "août": 8, "aout": 8, "sept": 9, "oct": 10, "nov": 11, "déc": 12, "dec": 12,
+}
+FR_MONTH_LABELS = {
+    1: "Janv.", 2: "Fév.", 3: "Mars", 4: "Avr.", 5: "Mai", 6: "Juin",
+    7: "Juil.", 8: "Août", 9: "Sept.", 10: "Oct.", 11: "Nov.", 12: "Déc.",
+}
+
+
+def normalize_key(k) -> str:
+    """Les en-têtes du Sheet contiennent parfois des retours à la ligne (ex: 'Dénomination\\n(libre)') :
+    on les aplatit pour matcher de façon fiable quel que soit le rendu exact du header."""
+    return re.sub(r"\s+", " ", str(k)).strip()
+
+
+def parse_amount_fr(v) -> float:
+    if v is None or v == "":
+        return 0.0
+    s = str(v)
+    s = re.sub(r"[\s\u202f\xa0]", "", s)  # espaces normales, insécables, insécables étroites
+    s = s.replace("€", "").replace(",", ".").strip()
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def parse_date_fr(s) -> str | None:
+    """'31-janv.-2025' / '5-août-2026' -> '2025-01' / '2026-08'."""
+    s = str(s).strip().lower()
+    m = re.match(r"(\d{1,2})-([a-zéû]+)\.?-(\d{4})", s)
+    if not m:
+        return None
+    _, mon_str, year = m.groups()
+    mon_str = mon_str.rstrip(".")
+    mon = FR_MONTHS.get(mon_str) or FR_MONTHS.get(mon_str[:4])
+    if not mon:
+        return None
+    return f"{year}-{mon:02d}"
+
+
 # ---------- 3. Agrégation mensuelle ----------
 
 def build_monthly_dataset(sheet_data: dict, bank_df: pd.DataFrame) -> list[dict]:
     """
-    Combine le Sheet (recettes déclaratives par site d'activité) et le relevé bancaire
-    catégorisé pour produire la liste de dicts mensuels utilisée par le dashboard.
+    Source principale : les onglets 'ML-YYYY' du Sheet, qui portent déjà la catégorisation faite
+    par Marion via les colonnes Type / Dénomination (pas de déduction hasardeuse ici — on lit
+    directement les valeurs de Type telles que Marion les choisit : Recettes, Aides & Allocation
+    Recettes, Cotisations sociales, Honoraires versés, Frais généraux, Achats, Frais quotidiens).
 
-    À FINALISER ENSEMBLE : la structure ci-dessous applique la même logique que l'analyse
-    manuelle (voir le fil de conversation), mais elle doit être testée une première fois sur
-    vos vraies données avant de tourner sans supervision — en particulier les noms exacts des
-    colonnes du Sheet, qui peuvent différer légèrement de ce qui est codé ici.
+    Le relevé bancaire (bank_df) sert uniquement à détecter le virement vers le compte commun,
+    que le Sheet ne suit pas.
     """
+    monthly: dict[str, dict] = {}
+
+    def month_bucket(month: str) -> dict:
+        return monthly.setdefault(month, {
+            "mois": month, "recettes": 0.0, "charges": 0.0,
+            "carmf": 0.0, "urssaf": 0.0, "retro": 0.0,
+            "loyer": 0.0, "fraisFixes": 0.0, "achats": 0.0,
+            "verse": None, "reel": True, "_has_recette_row": False,
+        })
+
+    for tab_name, records in sheet_data.items():
+        if not tab_name.startswith("ML-"):
+            continue
+        for raw_row in records:
+            row = {normalize_key(k): v for k, v in raw_row.items()}
+            month = parse_date_fr(row.get("Date (jj-mm-aaaa)"))
+            if not month:
+                continue
+            denom = str(row.get("Dénomination (libre)", "")).upper()
+            type_ = str(row.get("Type", "")).strip()
+            montant = parse_amount_fr(row.get("Montant Final (ne pas toucher)") or row.get("Montant (€)"))
+            m = month_bucket(month)
+
+            if type_ in ("Recettes", "Aides & Allocation Recettes"):
+                m["recettes"] += montant
+                if type_ == "Recettes" and montant != 0:
+                    m["_has_recette_row"] = True
+            elif type_ == "Cotisations sociales":
+                if "CARMF" in denom:
+                    m["carmf"] += montant
+                elif "URSSAF" in denom:
+                    m["urssaf"] += montant
+                m["charges"] += montant
+            elif type_ == "Honoraires versés":
+                m["retro"] += montant
+                m["charges"] += montant
+            elif type_ == "Frais généraux":
+                if "LOYER" in denom:
+                    m["loyer"] += montant
+                else:
+                    m["fraisFixes"] += montant
+                m["charges"] += montant
+            elif type_ in ("Achats", "Frais quotidiens"):
+                m["achats"] += montant
+                m["charges"] += montant
+
+    # Le virement vers le compte commun n'est pas dans le Sheet : on le lit sur le relevé bancaire.
     if not bank_df.empty:
         bank_df["categorie"] = bank_df["libelle"].apply(categorize)
         bank_df["date"] = pd.to_datetime(bank_df["date"], dayfirst=True, errors="coerce")
         bank_df["mois"] = bank_df["date"].dt.to_period("M").astype(str)
+        versements = bank_df[bank_df["categorie"] == "virement_compte_commun"]
+        for month, sub in versements.groupby("mois"):
+            if month in monthly:
+                monthly[month]["verse"] = round(-sub["montant"].sum(), 2)
 
-    monthly = []
-    months = sorted(bank_df["mois"].dropna().unique()) if not bank_df.empty else []
-    for m in months:
-        sub = bank_df[bank_df["mois"] == m]
-        def total(cat):
-            return round(-sub[sub["categorie"] == cat]["montant"].sum(), 2)
-        monthly.append({
-            "mois": m,
-            "recettes": round(sub[sub["categorie"].isin(["recette_secu_mutuelle", "recette_carte_cheques"])]["montant"].sum(), 2),
-            "carmf": total("carmf"),
-            "urssaf": total("urssaf"),
-            "retro": total("retrocession_bayane"),
-            "verse": total("virement_compte_commun"),
-            "charges": round(-sub[sub["montant"] < 0]["montant"].sum(), 2),
-            "reel": True,
-        })
-    return monthly
+    result = []
+    for month in sorted(monthly.keys()):
+        d = monthly[month]
+        # Un mois dont les recettes n'ont pas encore été saisies par Marion (pas de ligne
+        # "Recettes Carcans"/"Recettes Ste Hélène" avec un montant) reste marqué non-réel :
+        # mieux vaut garder l'ancienne estimation côté dashboard que d'écraser avec un 0 trompeur.
+        d["reel"] = d.pop("_has_recette_row")
+        year, mon = month.split("-")
+        d["label"] = f"{FR_MONTH_LABELS[int(mon)]} {year[2:]}"
+        for k in ("recettes", "charges", "carmf", "urssaf", "retro", "loyer", "fraisFixes", "achats"):
+            d[k] = round(d[k], 2)
+        result.append(d)
+    return result
+
+
+# ---------- 3bis. État persistant : ne jamais écraser un mois réel par une donnée incomplète ----------
+
+def load_state() -> dict:
+    """dict {mois: {...}} — ce qui a été calculé lors des refresh précédents."""
+    if STATE_PATH.exists():
+        rows = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        return {r["mois"]: r for r in rows}
+    return {}
+
+
+def merge_with_state(new_rows: list[dict], old_state: dict) -> list[dict]:
+    """
+    Règle : un mois fraîchement calculé comme reel=True remplace toujours l'ancien.
+    Un mois calculé comme reel=False (recettes pas encore saisies par Marion) ne doit
+    JAMAIS écraser une version antérieure qui existait déjà (surtout pas avec des 0) —
+    dans ce cas on garde l'ancienne version telle quelle, réelle ou estimée.
+    """
+    merged = dict(old_state)
+    for row in new_rows:
+        month = row["mois"]
+        if row["reel"] or month not in merged:
+            merged[month] = row
+        # sinon : on garde merged[month] tel qu'il était déjà (ne rien faire)
+    return [merged[m] for m in sorted(merged.keys())]
+
+
+def save_state(rows: list[dict]):
+    STATE_PATH.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ---------- 4. Réinjection dans le HTML ----------
@@ -249,8 +374,13 @@ def main():
     print("Étape 3/4 — agrégation mensuelle...")
     monthly = build_monthly_dataset(sheet_data, bank_df)
 
+    print("Étape 3bis/4 — fusion avec l'état précédent (ne jamais écraser un mois réel par du vide)...")
+    old_state = load_state()
+    merged = merge_with_state(monthly, old_state)
+    save_state(merged)
+
     print("Étape 4/4 — régénération du dashboard...")
-    inject_into_template(monthly)
+    inject_into_template(merged)
 
     print(f"[{datetime.now():%Y-%m-%d %H:%M}] Terminé → {OUTPUT_PATH}")
 
