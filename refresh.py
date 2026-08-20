@@ -366,6 +366,14 @@ def inject_into_template(monthly: list[dict]):
     if not pattern.search(html):
         sys.exit("Marqueurs /*DATA_START*/ /*DATA_END*/ introuvables dans le HTML — ne pas régénérer à l'aveugle.")
     html = pattern.sub(replacement, html)
+
+    date_pattern = re.compile(r'(<div class="eyebrow" id="lastUpdate">)MAJ \d{2}/\d{2}/\d{4}(</div>)')
+    today_label = datetime.now().strftime("%d/%m/%Y")
+    if not date_pattern.search(html):
+        print("  [attention] repère de date 'lastUpdate' introuvable — date d'en-tête non mise à jour")
+    else:
+        html = date_pattern.sub(rf"\g<1>MAJ {today_label}\g<2>", html)
+
     OUTPUT_PATH.write_text(html, encoding="utf-8")
 
 
