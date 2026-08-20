@@ -87,8 +87,20 @@ def get_clients(config: dict):
 # ---------- 1. Google Sheet ----------
 
 def read_sheet(gc, sheet_id: str) -> dict:
+    """Ne lit en détail que les onglets ML-* (les seuls dont build_monthly_dataset se sert) —
+    ça évite de planter sur un onglet comme 'Indemnités km' dont les en-têtes de colonnes
+    ne sont pas uniques et que get_all_records() n'aime pas."""
     sh = gc.open_by_key(sheet_id)
-    return {ws.title: ws.get_all_records() for ws in sh.worksheets()}
+    data = {}
+    for ws in sh.worksheets():
+        if not ws.title.startswith("ML-"):
+            print(f"  [ignoré] onglet '{ws.title}' (non utilisé par le calcul)")
+            continue
+        try:
+            data[ws.title] = ws.get_all_records()
+        except Exception as e:
+            print(f"  [attention] onglet '{ws.title}' illisible ({e}) — ignoré, pas de crash")
+    return data
 
 
 # ---------- 2. Google Drive : repérer + télécharger tout ce qui ressemble à de la banque ----------
