@@ -110,7 +110,7 @@
 
 <header>
   <div><span class="eyebrow">Dashboard-Marion</span><h1>Pilotage — Dr. Marion</h1></div>
-  <div class="eyebrow">MAJ 22/07/2026</div>
+  <div class="eyebrow" id="lastUpdate">MAJ 22/07/2026</div>
 </header>
 
 <main>
@@ -226,8 +226,15 @@ const M = [
 ];
 /*DATA_END*/
 
-const TODAY_MOIS = '2026-07';
-const TODAY_IDX = M.findIndex(d=>d.mois===TODAY_MOIS);
+const _now = new Date();
+const TODAY_MOIS = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+let TODAY_IDX = M.findIndex(d=>d.mois===TODAY_MOIS);
+if(TODAY_IDX === -1){
+  // le mois calendaire réel n'a pas encore de ligne dans les données (Sheet pas encore rempli
+  // pour ce mois) -> on retombe sur le dernier mois disponible plutôt que de planter
+  TODAY_IDX = M.length - 1;
+  console.warn(`Aucune donnée pour ${TODAY_MOIS} — repli sur ${M[TODAY_IDX].mois}`);
+}
 
 // préco 100% dynamique : recalcule dès que recettes/charges de la ligne changent (prochain refresh de données)
 function calcPreco(row){
@@ -247,7 +254,7 @@ function rowsFor(period){
   return M;
 }
 const sum=(rows,k)=>rows.reduce((a,r)=>a+(r[k]||0),0);
-const periodLabels = {'1m':'Ce mois (juillet 2026)','3m':'3 derniers mois','6m':'6 derniers mois','2025':'2025','2026':'2026','all':'Tout (2025–2026)'};
+const periodLabels = {'1m':`Ce mois (${M[TODAY_IDX].label})`,'3m':'3 derniers mois','6m':'6 derniers mois','2025':'2025','2026':'2026','all':'Tout (2025–2026)'};
 
 function renderKPIs(period){
   const rows = rowsFor(period);
