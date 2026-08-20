@@ -2,9 +2,8 @@ name: Refresh Dashboard-Marion
 
 on:
   schedule:
-    # tous les jours à 6h00 UTC (7h/8h heure française selon saison)
     - cron: "0 6 * * *"
-  workflow_dispatch: {}   # permet aussi de le lancer manuellement depuis l'onglet "Actions" de GitHub
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -25,7 +24,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Écrire les identifiants Google (secret GitHub)
-        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}" > service-account.json
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_JSON" > service-account.json
+          python -c "import json; json.load(open('service-account.json'))" \
+            && echo "service-account.json est un JSON valide" \
+            || (echo "::error::le secret GOOGLE_SERVICE_ACCOUNT_JSON ne contient pas un JSON valide" && exit 1)
 
       - name: Écrire la config
         run: |
@@ -48,7 +53,7 @@ jobs:
         run: |
           git config user.name "dashboard-marion-bot"
           git config user.email "actions@github.com"
-          git add dashboard-marion.html
+          git add dashboard-marion.html monthly_data.json
           if ! git diff --cached --quiet; then
             git commit -m "Refresh auto $(date -u '+%Y-%m-%d %H:%M UTC')"
             git push
